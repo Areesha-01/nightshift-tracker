@@ -1,19 +1,39 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema({
-  name: {
+const taskSchema = new mongoose.Schema({
+  title: {
     type: String,
     required: true
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true
+  description: {
+    type: String
   },
-  password: {
+  status: {
     type: String,
-    required: true
-  }
+    enum: ['To Do', 'In Progress', 'Done'],
+    default: 'To Do'
+  },
+  assignee: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  comments: [
+    {
+      text: String,
+      commentedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }
+  ]
 }, { timestamps: true });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('Task', taskSchema);
