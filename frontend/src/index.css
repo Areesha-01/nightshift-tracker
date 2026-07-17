@@ -48,9 +48,10 @@ body {
   border-radius: 16px;
   padding: 1px;
   background: linear-gradient(135deg, var(--accent-dim), transparent 40%);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  mask-composite: exclude;
   pointer-events: none;
   animation: glowPulse 4s ease-in-out infinite;
 }
@@ -127,6 +128,121 @@ body {
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
 
+/* --- Password toggle, strength meter, checklist --- */
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  line-height: 1;
+  color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.password-toggle-btn:active {
+  transform: scale(0.85);
+}
+
+.password-strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  animation: fadeSlide 0.25s ease;
+}
+
+.password-strength-bar {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.password-strength-bar .segment {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background: var(--border);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background-color 0.35s ease;
+}
+
+.password-strength-bar .segment.filled {
+  transform: scaleX(1);
+}
+
+.password-strength-bar .segment.weak { background: var(--danger); }
+.password-strength-bar .segment.medium { background: var(--amber); }
+.password-strength-bar .segment.strong { background: var(--accent); }
+
+.password-strength-label {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 48px;
+  text-align: right;
+  transition: color 0.3s ease;
+  animation: popIn 0.3s ease;
+}
+
+.password-strength-label.weak { color: var(--danger); }
+.password-strength-label.medium { color: var(--amber); }
+.password-strength-label.strong { color: var(--accent); }
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.7); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.password-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: fadeSlide 0.25s ease;
+}
+
+.password-checklist li {
+  color: var(--text-muted);
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.password-checklist li.valid {
+  color: var(--accent);
+  animation: checkPop 0.3s ease;
+}
+
+@keyframes checkPop {
+  0% { transform: translateX(-6px); opacity: 0.5; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- end password additions --- */
+
 .auth-error {
   background: #f8717118;
   border: 1px solid #f8717140;
@@ -135,6 +251,13 @@ body {
   padding: 10px 12px;
   border-radius: 8px;
   margin-bottom: 16px;
+  animation: shake 0.35s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
 }
 
 .auth-submit {
@@ -158,7 +281,7 @@ body {
   transform: translateY(-1px);
 }
 
-.auth-submit:active { transform: translateY(0); }
+.auth-submit:active { transform: translateY(0) scale(0.98); }
 
 .auth-switch {
   text-align: center;
