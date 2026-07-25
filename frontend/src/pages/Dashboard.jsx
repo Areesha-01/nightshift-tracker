@@ -1,22 +1,78 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 const COLUMNS = ['To Do', 'In Progress', 'Done'];
+const PRIORITIES = ['Low', 'Medium', 'High'];
+const EXCLUDED_USER_NAMES = ['test user'];
+
+function EditIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  );
+}
+
+function ClearIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [showModal, setShowModal] = useState(false);
-  const [editingTask, setEditingTask] = useState(null); // null = creating new
-  const [formData, setFormData] = useState({ title: '', description: '', status: 'To Do' });
+  const [editingTask, setEditingTask] = useState(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    status: 'To Do',
+    priority: 'Medium',
+    dueDate: '',
+    assignee: '',
+  });
   const [saving, setSaving] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterPriority, setFilterPriority] = useState('All');
+  const [filterAssignee, setFilterAssignee] = useState('All');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const didInit = useRef(false);
+  const filterRef = useRef(null);
 
   const handleLogout = () => {
     logout();
@@ -36,13 +92,46 @@ export default function Dashboard() {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get('/users');
+      const filtered = res.data.filter(
+        (u) => !EXCLUDED_USER_NAMES.includes((u.name || '').trim().toLowerCase())
+      );
+      setUsers(filtered);
+    } catch (err) {
+      // Non-critical
+    }
+  };
+
   useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
     fetchTasks();
+    fetchUsers();
+  }, []);
+
+  // Close the filter panel when clicking outside it
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterRef.current && !filterRef.current.contains(e.target)) {
+        setShowFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const openCreateModal = (status) => {
     setEditingTask(null);
-    setFormData({ title: '', description: '', status: status || 'To Do' });
+    setFormData({
+      title: '',
+      description: '',
+      status: status || 'To Do',
+      priority: 'Medium',
+      dueDate: '',
+      assignee: '',
+    });
     setShowModal(true);
   };
 
@@ -52,6 +141,9 @@ export default function Dashboard() {
       title: task.title,
       description: task.description || '',
       status: task.status,
+      priority: task.priority || 'Medium',
+      dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
+      assignee: task.assignee?._id || '',
     });
     setShowModal(true);
   };
@@ -69,11 +161,18 @@ export default function Dashboard() {
     e.preventDefault();
     if (!formData.title.trim()) return;
     setSaving(true);
+
+    const payload = {
+      ...formData,
+      dueDate: formData.dueDate || null,
+      assignee: formData.assignee || null,
+    };
+
     try {
       if (editingTask) {
-        await api.put(`/tasks/${editingTask._id}`, formData);
+        await api.put(`/tasks/${editingTask._id}`, payload);
       } else {
-        await api.post('/tasks', formData);
+        await api.post('/tasks', payload);
       }
       await fetchTasks();
       closeModal();
@@ -95,7 +194,6 @@ export default function Dashboard() {
   };
 
   const handleStatusChange = async (task, newStatus) => {
-    // Optimistic update
     setTasks((prev) =>
       prev.map((t) => (t._id === task._id ? { ...t, status: newStatus } : t))
     );
@@ -103,9 +201,55 @@ export default function Dashboard() {
       await api.put(`/tasks/${task._id}`, { status: newStatus });
     } catch (err) {
       setError('Could not update task status.');
-      fetchTasks(); // revert on failure
+      fetchTasks();
     }
   };
+
+  const handlePriorityChange = async (task, newPriority) => {
+    setTasks((prev) =>
+      prev.map((t) => (t._id === task._id ? { ...t, priority: newPriority } : t))
+    );
+    try {
+      await api.put(`/tasks/${task._id}`, { priority: newPriority });
+    } catch (err) {
+      setError('Could not update task priority.');
+      fetchTasks();
+    }
+  };
+
+  const isOverdue = (task) => {
+    if (!task.dueDate || task.status === 'Done') return false;
+    return new Date(task.dueDate) < new Date(new Date().toDateString());
+  };
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterStatus('All');
+    setFilterPriority('All');
+    setFilterAssignee('All');
+  };
+
+  const activeFilterCount = [filterStatus, filterPriority, filterAssignee].filter(
+    (v) => v !== 'All'
+  ).length;
+
+  const isFiltering = searchQuery.trim() !== '' || activeFilterCount > 0;
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filterStatus === 'All' || task.status === filterStatus;
+    const matchesPriority = filterPriority === 'All' || task.priority === filterPriority;
+    const matchesAssignee =
+      filterAssignee === 'All' ||
+      (filterAssignee === 'Unassigned' && !task.assignee) ||
+      task.assignee?._id === filterAssignee;
+    return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
+  });
 
   return (
     <div className="board-page">
@@ -122,12 +266,102 @@ export default function Dashboard() {
 
       {error && <div className="auth-error board-error">{error}</div>}
 
+      <div className="board-toolbar">
+        <input
+          type="text"
+          placeholder="Search by task name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="search-input"
+        />
+
+        <div className="filter-dropdown-wrap" ref={filterRef}>
+          <button
+            type="button"
+            className="filter-btn"
+            onClick={() => setShowFilters((prev) => !prev)}
+          >
+            <FilterIcon />
+            Filters
+            {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
+          </button>
+
+          {showFilters && (
+            <div className="filter-panel">
+              <div className="filter-panel-group">
+                <label>Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value);
+                    setShowFilters(false);
+                  }}
+                >
+                  <option value="All">All</option>
+                  {COLUMNS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-panel-group">
+                <label>Priority</label>
+                <select
+                  value={filterPriority}
+                  onChange={(e) => {
+                    setFilterPriority(e.target.value);
+                    setShowFilters(false);
+                  }}
+                >
+                  <option value="All">All</option>
+                  {PRIORITIES.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-panel-group">
+                <label>Assignee</label>
+                <select
+                  value={filterAssignee}
+                  onChange={(e) => {
+                    setFilterAssignee(e.target.value);
+                    setShowFilters(false);
+                  }}
+                >
+                  <option value="All">All</option>
+                  <option value="Unassigned">Unassigned</option>
+                  {users.map((u) => (
+                    <option key={u._id} value={u._id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {activeFilterCount > 0 && (
+                <button type="button" className="filter-clear-btn" onClick={clearFilters}>
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {isFiltering && (
+          <button type="button" className="clear-all-btn" onClick={clearFilters}>
+            <ClearIcon /> Clear
+          </button>
+        )}
+      </div>
+
       {loading ? (
         <p className="board-loading">Loading tasks...</p>
+      ) : isFiltering && filteredTasks.length === 0 ? (
+        <p className="board-loading">No tasks match your search/filters.</p>
       ) : (
         <div className="board-columns">
           {COLUMNS.map((column) => {
-            const columnTasks = tasks.filter((t) => t.status === column);
+            const columnTasks = filteredTasks.filter((t) => t.status === column);
+            if (isFiltering && columnTasks.length === 0) return null;
             return (
               <div className="board-column" key={column}>
                 <div className="board-column-header">
@@ -142,10 +376,26 @@ export default function Dashboard() {
 
                   {columnTasks.map((task) => (
                     <div className="task-card" key={task._id}>
-                      <h4>{task.title}</h4>
+                      <div className="task-card-top">
+                        <h4>{task.title}</h4>
+                      </div>
+
                       {task.description && <p>{task.description}</p>}
 
-                      <div className="task-card-footer">
+                      {(task.dueDate || task.assignee) && (
+                        <div className="task-meta">
+                          {task.dueDate && (
+                            <span className={`due-date ${isOverdue(task) ? 'overdue' : ''}`}>
+                              📅 {formatDate(task.dueDate)}
+                            </span>
+                          )}
+                          {task.assignee && (
+                            <span className="assignee-tag">👤 {task.assignee.name}</span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="task-card-controls">
                         <select
                           value={task.status}
                           onChange={(e) => handleStatusChange(task, e.target.value)}
@@ -156,9 +406,25 @@ export default function Dashboard() {
                           ))}
                         </select>
 
+                        <select
+                          value={task.priority || 'Medium'}
+                          onChange={(e) => handlePriorityChange(task, e.target.value)}
+                          className={`priority-select priority-${(task.priority || 'Medium').toLowerCase()}`}
+                        >
+                          {PRIORITIES.map((p) => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="task-card-footer">
                         <div className="task-card-actions">
-                          <button onClick={() => openEditModal(task)} title="Edit">✏️</button>
-                          <button onClick={() => handleDelete(task._id)} title="Delete">🗑️</button>
+                          <button onClick={() => openEditModal(task)} title="Edit task" className="icon-btn icon-btn-edit">
+                            <EditIcon />
+                          </button>
+                          <button onClick={() => handleDelete(task._id)} title="Delete task" className="icon-btn icon-btn-delete">
+                            <DeleteIcon />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -199,13 +465,45 @@ export default function Dashboard() {
                   rows={3}
                 />
               </div>
-              <div className="field">
-                <label>Status</label>
-                <select name="status" value={formData.status} onChange={handleFormChange}>
-                  {COLUMNS.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+
+              <div className="field-row">
+                <div className="field">
+                  <label>Status</label>
+                  <select name="status" value={formData.status} onChange={handleFormChange}>
+                    {COLUMNS.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Priority</label>
+                  <select name="priority" value={formData.priority} onChange={handleFormChange}>
+                    {PRIORITIES.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="field-row">
+                <div className="field">
+                  <label>Due Date</label>
+                  <input
+                    type="date"
+                    name="dueDate"
+                    value={formData.dueDate}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="field">
+                  <label>Assignee</label>
+                  <select name="assignee" value={formData.assignee} onChange={handleFormChange}>
+                    <option value="">Unassigned</option>
+                    {users.map((u) => (
+                      <option key={u._id} value={u._id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="modal-actions">
