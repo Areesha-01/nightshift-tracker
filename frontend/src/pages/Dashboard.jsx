@@ -71,6 +71,10 @@ export default function Dashboard() {
   const [filterAssignee, setFilterAssignee] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Drag-and-drop state
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [dragOverColumn, setDragOverColumn] = useState(null);
+
   const didInit = useRef(false);
   const filterRef = useRef(null);
 
@@ -217,6 +221,39 @@ export default function Dashboard() {
     }
   };
 
+  // Drag-and-drop handlers
+  const handleDragStart = (e, task) => {
+    setDraggedTaskId(task._id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', task._id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
+    setDragOverColumn(null);
+  };
+
+  const handleColumnDragOver = (e, column) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverColumn !== column) setDragOverColumn(column);
+  };
+
+  const handleColumnDragLeave = (column) => {
+    if (dragOverColumn === column) setDragOverColumn(null);
+  };
+
+  const handleDrop = (e, column) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
+    const task = tasks.find((t) => t._id === taskId);
+    setDragOverColumn(null);
+    setDraggedTaskId(null);
+    if (task && task.status !== column) {
+      handleStatusChange(task, column);
+    }
+  };
+
   const isOverdue = (task) => {
     if (!task.dueDate || task.status === 'Done') return false;
     return new Date(task.dueDate) < new Date(new Date().toDateString());
@@ -353,6 +390,11 @@ export default function Dashboard() {
         )}
       </div>
 
+      <p className="board-hint">
+        Tip: drag a card to another column to change its status, or use the dropdown on the card.
+        {isFiltering && ' Drag-and-drop is disabled while a search or filter is active.'}
+      </p>
+
       {loading ? (
         <p className="board-loading">Loading tasks...</p>
       ) : isFiltering && filteredTasks.length === 0 ? (
@@ -369,13 +411,26 @@ export default function Dashboard() {
                   <span className="task-count">{columnTasks.length}</span>
                 </div>
 
-                <div className="board-column-body">
+                <div
+                  className={`board-column-body ${dragOverColumn === column ? 'drag-over' : ''}`}
+                  onDragOver={(e) => handleColumnDragOver(e, column)}
+                  onDragLeave={() => handleColumnDragLeave(column)}
+                  onDrop={(e) => handleDrop(e, column)}
+                >
                   {columnTasks.length === 0 && (
-                    <p className="empty-column">No tasks yet</p>
+                    <p className="empty-column">
+                      {dragOverColumn === column && draggedTaskId ? 'Drop here' : 'No tasks yet'}
+                    </p>
                   )}
 
                   {columnTasks.map((task) => (
-                    <div className="task-card" key={task._id}>
+                    <div
+                      className={`task-card ${draggedTaskId === task._id ? 'dragging' : ''} ${isFiltering ? 'drag-disabled' : ''}`}
+                      key={task._id}
+                      draggable={!isFiltering}
+                      onDragStart={(e) => handleDragStart(e, task)}
+                      onDragEnd={handleDragEnd}
+                    >
                       <div className="task-card-top">
                         <h4>{task.title}</h4>
                       </div>

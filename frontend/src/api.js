@@ -12,4 +12,21 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// If the token is missing/expired, the backend returns 401.
+// Instead of showing a confusing generic error, log the user out
+// and send them back to Login so they understand why.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
