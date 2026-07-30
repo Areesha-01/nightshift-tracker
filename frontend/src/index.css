@@ -563,9 +563,10 @@ body {
   padding: 28px;
   width: 100%;
   max-width: 420px;
+  max-height: 88vh;
+  overflow-y: auto;
   animation: riseIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-
 .modal-card h3 {
   margin: 0 0 20px;
   font-family: 'Space Grotesk', sans-serif;
@@ -1132,4 +1133,131 @@ body {
   font-size: 12px;
   color: var(--text-muted);
   margin: -8px 0 20px;
+}
+/* --- Comments --- */
+
+.comment-count-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+
+.comment-count-tag:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.comments-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.comments-section > label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.comments-list {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.comment-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.comment-author {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.comment-text {
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.no-comments {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 10px 0;
+}
+
+.comment-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.comment-input-row input {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'Inter', sans-serif;
+}
+
+.comment-input-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.comment-post-btn {
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #0a0e1a;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.comment-post-btn:hover:not(:disabled) {
+  background: #7ff3e0;
+}
+
+.comment-post-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* --- Comments popup (lightweight) --- */
+
+.comments-popup-card {
+  max-width: 380px;
+}
+
+.comments-popup-task-title {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: -12px 0 16px;
+}
+
+.comments-popup-close-btn {
+  width: 100%;
+  margin-top: 12px;
 }

@@ -75,6 +75,11 @@ export default function Dashboard() {
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverColumn, setDragOverColumn] = useState(null);
 
+  // Comments
+  const [newComment, setNewComment] = useState('');
+  const [commentSaving, setCommentSaving] = useState(false);
+  const [commentsTask, setCommentsTask] = useState(null); // lightweight popup, separate from full edit modal
+
   const didInit = useRef(false);
   const filterRef = useRef(null);
 
@@ -128,6 +133,7 @@ export default function Dashboard() {
 
   const openCreateModal = (status) => {
     setEditingTask(null);
+    setNewComment('');
     setFormData({
       title: '',
       description: '',
@@ -141,6 +147,7 @@ export default function Dashboard() {
 
   const openEditModal = (task) => {
     setEditingTask(task);
+    setNewComment('');
     setFormData({
       title: task.title,
       description: task.description || '',
@@ -155,6 +162,7 @@ export default function Dashboard() {
   const closeModal = () => {
     setShowModal(false);
     setEditingTask(null);
+    setNewComment('');
   };
 
   const handleFormChange = (e) => {
@@ -251,6 +259,35 @@ export default function Dashboard() {
     setDraggedTaskId(null);
     if (task && task.status !== column) {
       handleStatusChange(task, column);
+    }
+  };
+
+  const openCommentsPopup = (task) => {
+    setNewComment('');
+    setCommentsTask(task);
+  };
+
+  const closeCommentsPopup = () => {
+    setCommentsTask(null);
+    setNewComment('');
+  };
+
+  const handleAddComment = async (targetTask, isPopup) => {
+    if (!newComment.trim() || !targetTask) return;
+    setCommentSaving(true);
+    try {
+      const res = await api.post(`/tasks/${targetTask._id}/comments`, { text: newComment });
+      setTasks((prev) => prev.map((t) => (t._id === res.data._id ? res.data : t)));
+      if (isPopup) {
+        setCommentsTask(res.data);
+      } else {
+        setEditingTask(res.data);
+      }
+      setNewComment('');
+    } catch (err) {
+      setError('Could not add comment.');
+    } finally {
+      setCommentSaving(false);
     }
   };
 
@@ -437,7 +474,7 @@ export default function Dashboard() {
 
                       {task.description && <p>{task.description}</p>}
 
-                      {(task.dueDate || task.assignee) && (
+                      {(task.dueDate || task.assignee || (task.comments && task.comments.length > 0)) && (
                         <div className="task-meta">
                           {task.dueDate && (
                             <span className={`due-date ${isOverdue(task) ? 'overdue' : ''}`}>
@@ -446,6 +483,15 @@ export default function Dashboard() {
                           )}
                           {task.assignee && (
                             <span className="assignee-tag">👤 {task.assignee.name}</span>
+                          )}
+                          {task.comments && task.comments.length > 0 && (
+                            <button
+                              type="button"
+                              className="comment-count-tag"
+                              onClick={() => openCommentsPopup(task)}
+                            >
+                              💬 {task.comments.length}
+                            </button>
                           )}
                         </div>
                       )}
@@ -568,6 +614,96 @@ export default function Dashboard() {
                 </button>
               </div>
             </form>
+
+            {editingTask && (
+              <div className="comments-section">
+                <label>Comments</label>
+                <div className="comments-list">
+                  {editingTask.comments && editingTask.comments.length > 0 ? (
+                    editingTask.comments.map((c, idx) => (
+                      <div className="comment-item" key={c._id || idx}>
+                        <span className="comment-author">{c.commentedBy?.name || 'Unknown'}</span>
+                        <span className="comment-text">{c.text}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="no-comments">No comments yet.</p>
+                  )}
+                </div>
+                <div className="comment-input-row">
+                  <input
+                    type="text"
+                    placeholder="Add a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddComment(editingTask, false);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="comment-post-btn"
+                    onClick={() => handleAddComment(editingTask, false)}
+                    disabled={commentSaving || !newComment.trim()}
+                  >
+                    {commentSaving ? '...' : 'Post'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {commentsTask && (
+        <div className="modal-overlay" onClick={closeCommentsPopup}>
+          <div className="modal-card comments-popup-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Comments</h3>
+            <p className="comments-popup-task-title">{commentsTask.title}</p>
+
+            <div className="comments-list">
+              {commentsTask.comments && commentsTask.comments.length > 0 ? (
+                commentsTask.comments.map((c, idx) => (
+                  <div className="comment-item" key={c._id || idx}>
+                    <span className="comment-author">{c.commentedBy?.name || 'Unknown'}</span>
+                    <span className="comment-text">{c.text}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="no-comments">No comments yet.</p>
+              )}
+            </div>
+
+            <div className="comment-input-row">
+              <input
+                type="text"
+                placeholder="Add a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddComment(commentsTask, true);
+                  }
+                }}
+                autoFocus
+              />
+              <button
+                type="button"
+                className="comment-post-btn"
+                onClick={() => handleAddComment(commentsTask, true)}
+                disabled={commentSaving || !newComment.trim()}
+              >
+                {commentSaving ? '...' : 'Post'}
+              </button>
+            </div>
+
+            <button type="button" className="modal-cancel-btn comments-popup-close-btn" onClick={closeCommentsPopup}>
+              Close
+            </button>
           </div>
         </div>
       )}

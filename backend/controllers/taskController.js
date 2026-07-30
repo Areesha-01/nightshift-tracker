@@ -1,8 +1,6 @@
 const Task = require('../models/Task');
 const asyncHandler = require('../utils/asyncHandler');
 
-// Only these fields may ever be written by a client — prevents
-// someone from slipping createdBy or _id into a request body.
 const ALLOWED_FIELDS = ['title', 'description', 'status', 'priority', 'dueDate', 'assignee'];
 
 function pickAllowedFields(body) {
@@ -31,7 +29,8 @@ exports.createTask = asyncHandler(async (req, res) => {
 
   const populatedTask = await Task.findById(newTask._id)
     .populate('assignee', 'name email')
-    .populate('createdBy', 'name email');
+    .populate('createdBy', 'name email')
+    .populate('comments.commentedBy', 'name');
 
   res.status(201).json(populatedTask);
 });
@@ -40,7 +39,8 @@ exports.createTask = asyncHandler(async (req, res) => {
 exports.getTasks = asyncHandler(async (req, res) => {
   const tasks = await Task.find()
     .populate('assignee', 'name email')
-    .populate('createdBy', 'name email');
+    .populate('createdBy', 'name email')
+    .populate('comments.commentedBy', 'name');
   res.status(200).json(tasks);
 });
 
@@ -59,7 +59,8 @@ exports.updateTask = asyncHandler(async (req, res) => {
     runValidators: true,
   })
     .populate('assignee', 'name email')
-    .populate('createdBy', 'name email');
+    .populate('createdBy', 'name email')
+    .populate('comments.commentedBy', 'name');
 
   if (!updatedTask) {
     return res.status(404).json({ message: 'Task not found' });
@@ -74,4 +75,28 @@ exports.deleteTask = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: 'Task not found' });
   }
   res.status(200).json({ message: 'Task deleted successfully' });
+});
+
+// Add a comment to a task
+exports.addComment = asyncHandler(async (req, res) => {
+  const { text } = req.body;
+
+  if (!text || !text.trim()) {
+    return res.status(400).json({ message: 'Comment text is required' });
+  }
+
+  const task = await Task.findById(req.params.id);
+  if (!task) {
+    return res.status(404).json({ message: 'Task not found' });
+  }
+
+  task.comments.push({ text: text.trim(), commentedBy: req.user.id });
+  await task.save();
+
+  const updatedTask = await Task.findById(req.params.id)
+    .populate('assignee', 'name email')
+    .populate('createdBy', 'name email')
+    .populate('comments.commentedBy', 'name');
+
+  res.status(200).json(updatedTask);
 });
