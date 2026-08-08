@@ -54,6 +54,8 @@ export default function Register() {
     return 'strong';
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -63,11 +65,14 @@ export default function Register() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       await api.post('/auth/register', formData);
       navigate('/login');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -152,7 +157,9 @@ export default function Register() {
             )}
           </div>
 
-          <button type="submit" className="auth-submit">Register</button>
+          <button type="submit" className="auth-submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating account...' : 'Register'}
+          </button>
         </form>
 
         <p className="auth-switch">

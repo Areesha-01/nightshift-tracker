@@ -1,15 +1,20 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../api';
 
 export default function Splash() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
+    // Ping the backend as soon as the app opens, so it's already
+    // "awake" (Render free tier) by the time the user reaches Register/Login
+    api.get('/').catch(() => {});
+
     const timer = setTimeout(() => {
       navigate(user ? '/dashboard' : '/login', { replace: true });
-    }, 1900);
+    }, 7500);
     return () => clearTimeout(timer);
   }, [navigate, user]);
 
