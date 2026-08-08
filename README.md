@@ -9,11 +9,10 @@ A lightweight task and bug tracker built for 2amTechSystems' development team, i
 - **Reference:** REF/2AM/HR/26-025(1)
 
 ## Tech Stack
-- MongoDB
-- Express.js
-- React.js
-- Node.js
-(MERN Stack)
+- **Backend:** Node.js, Express.js, MongoDB, Mongoose, JWT, bcrypt, Nodemailer
+- **Frontend:** React.js, Vite, React Router, Axios, HTML5 Drag-and-Drop API
+- **Testing:** Jest, Supertest
+- **Deployment:** Vercel (frontend), Render (backend), MongoDB Atlas (database)
 
 ## Branching Strategy
 - main — production-ready, stable code only
@@ -63,4 +62,12 @@ The frontend will run on http://localhost:5173
 - You will be redirected to the dashboard on successful login
 
 ## Live Demo
-(Link will be added after deployment in Week 8)
+- Frontend: https://nightshift-tracker.vercel.app
+- Backend API: https://nightshift-api-ezqw.onrender.com/api
+## Testing
+The backend includes an automated test suite (Jest + Supertest) covering authentication and task endpoints, including validation errors, unauthorized access, and field-level security checks. Run it with:
+
+    cd backend
+    npm test
+
+A coverage report is generated in `backend/coverage/`.
