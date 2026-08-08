@@ -9,6 +9,9 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendEmail = async (to, subject, html) => {
+  if (process.env.NODE_ENV === 'test') {
+    return; // Skip actual email sending during automated tests
+  }
   try {
     await transporter.sendMail({
       from: `"NightShift" <${process.env.EMAIL_USER}>`,

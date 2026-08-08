@@ -427,11 +427,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      <p className="board-hint">
-        Tip: drag a card to another column to change its status, or use the dropdown on the card.
-        {isFiltering && ' Drag-and-drop is disabled while a search or filter is active.'}
-      </p>
-
       {loading ? (
         <p className="board-loading">Loading tasks...</p>
       ) : isFiltering && filteredTasks.length === 0 ? (
