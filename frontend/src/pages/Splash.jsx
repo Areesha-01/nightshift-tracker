@@ -14,7 +14,7 @@ export default function Splash() {
 
     const timer = setTimeout(() => {
       navigate(user ? '/dashboard' : '/login', { replace: true });
-    }, 7500);
+    }, 1900);
     return () => clearTimeout(timer);
   }, [navigate, user]);
 
