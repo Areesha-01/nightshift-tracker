@@ -21,9 +21,12 @@ function EyeOffIcon() {
 }
 
 export default function Register() {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', adminCode: '' });
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showAdminField, setShowAdminField] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -54,11 +57,10 @@ export default function Register() {
     return 'strong';
   };
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
 
     if (!isPasswordValid) {
       setError('Password does not meet the required conditions');
@@ -67,8 +69,9 @@ export default function Register() {
 
     setIsSubmitting(true);
     try {
-      await api.post('/auth/register', formData);
-      navigate('/login');
+      const res = await api.post('/auth/register', formData);
+      setSuccessMessage(res.data.message);
+      setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -83,6 +86,7 @@ export default function Register() {
         <h2 className="auth-title">Create your account</h2>
 
         {error && <div className="auth-error">{error}</div>}
+        {successMessage && <div className="auth-success">{successMessage}</div>}
 
         <form onSubmit={handleSubmit}>
           <div className="field">
@@ -156,6 +160,27 @@ export default function Register() {
               </>
             )}
           </div>
+
+          {!showAdminField ? (
+            <button
+              type="button"
+              className="admin-code-toggle"
+              onClick={() => setShowAdminField(true)}
+            >
+              Registering as an admin?
+            </button>
+          ) : (
+            <div className="field">
+              <label>Admin Code (optional)</label>
+              <input
+                type="text"
+                name="adminCode"
+                value={formData.adminCode}
+                onChange={handleChange}
+                placeholder="Leave blank if you're not an admin"
+              />
+            </div>
+          )}
 
           <button type="submit" className="auth-submit" disabled={isSubmitting}>
             {isSubmitting ? 'Creating account...' : 'Register'}

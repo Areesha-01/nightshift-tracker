@@ -82,6 +82,9 @@ export default function Dashboard() {
 
   const didInit = useRef(false);
   const filterRef = useRef(null);
+    // Admin: pending user approvals
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [showPendingPanel, setShowPendingPanel] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -100,6 +103,33 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+    const fetchPendingUsers = async () => {
+    try {
+      const res = await api.get('/users/pending');
+      setPendingUsers(res.data);
+    } catch (err) {
+      // Non-critical — only relevant for admins
+    }
+  };
+    const handleApproveUser = async (userId) => {
+    try {
+      await api.put(`/users/${userId}/verify`);
+      setPendingUsers((prev) => prev.filter((u) => u._id !== userId));
+      fetchUsers();
+    } catch (err) {
+      setError('Could not approve user.');
+    }
+  };
+
+  const handleRejectUser = async (userId) => {
+    if (!window.confirm('Reject this user? Their account will be permanently deleted.')) return;
+    try {
+      await api.delete(`/users/${userId}/reject`);
+      setPendingUsers((prev) => prev.filter((u) => u._id !== userId));
+    } catch (err) {
+      setError('Could not reject user.');
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -113,13 +143,15 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
+   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
     fetchTasks();
     fetchUsers();
+    if (user?.role === 'admin') {
+      fetchPendingUsers();
+    }
   }, []);
-
   // Close the filter panel when clicking outside it
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -290,6 +322,23 @@ export default function Dashboard() {
       setCommentSaving(false);
     }
   };
+    // Show a locked screen if the account hasn't been approved yet
+  if (!user?.isVerified) {
+    return (
+      <div className="pending-wrap">
+        <div className="pending-card">
+          <span className="auth-eyebrow">NightShift</span>
+          <h2 className="auth-title">Account Pending Approval</h2>
+          <p className="pending-text">
+            Hi {user?.name}, your account has been created but is waiting for an
+            administrator to approve it. You'll be able to access the task
+            board as soon as your account is verified.
+          </p>
+          <button onClick={handleLogout} className="logout-btn">Log out</button>
+        </div>
+      </div>
+    );
+  }
 
   const isOverdue = (task) => {
     if (!task.dueDate || task.status === 'Done') return false;
@@ -333,13 +382,56 @@ export default function Dashboard() {
           <h2 className="board-title">Welcome, {user?.name}</h2>
         </div>
         <div className="board-header-actions">
-          <button onClick={() => openCreateModal()} className="add-task-btn">+ Add Task</button>
+                    {user?.role === 'admin' && (
+            <button onClick={() => openCreateModal()} className="add-task-btn">+ Add Task</button>
+          )}
           <button onClick={handleLogout} className="logout-btn">Log out</button>
         </div>
       </header>
 
       {error && <div className="auth-error board-error">{error}</div>}
+      {user?.role === 'admin' && pendingUsers.length > 0 && (
+        <div className="admin-panel">
+          <button
+            type="button"
+            className="admin-panel-toggle"
+            onClick={() => setShowPendingPanel((prev) => !prev)}
+          >
+            
+             {pendingUsers.length} account{pendingUsers.length > 1 ? 's' : ''} awaiting approval
+            <span className="admin-panel-arrow">{showPendingPanel ? '▲' : '▼'}</span>
+          </button>
 
+          {showPendingPanel && (
+            <div className="admin-panel-list">
+              {pendingUsers.map((pu) => (
+                <div className="admin-panel-item" key={pu._id}>
+                  <div>
+                    <span className="admin-panel-name">{pu.name}</span>
+                    <span className="admin-panel-email">{pu.email}</span>
+                  </div>
+                  <div className="admin-panel-actions">
+                    <button
+                      type="button"
+                      className="admin-approve-btn"
+                      onClick={() => handleApproveUser(pu._id)}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-reject-btn"
+                      onClick={() => handleRejectUser(pu._id)}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div className="board-toolbar">
         <input
           type="text"
@@ -491,7 +583,7 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      <div className="task-card-controls">
+                       <div className="task-card-controls">
                         <select
                           value={task.status}
                           onChange={(e) => handleStatusChange(task, e.target.value)}
@@ -502,34 +594,40 @@ export default function Dashboard() {
                           ))}
                         </select>
 
-                        <select
-                          value={task.priority || 'Medium'}
-                          onChange={(e) => handlePriorityChange(task, e.target.value)}
-                          className={`priority-select priority-${(task.priority || 'Medium').toLowerCase()}`}
-                        >
-                          {PRIORITIES.map((p) => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
-                        </select>
+                        {user?.role === 'admin' && (
+                          <select
+                            value={task.priority || 'Medium'}
+                            onChange={(e) => handlePriorityChange(task, e.target.value)}
+                            className={`priority-select priority-${(task.priority || 'Medium').toLowerCase()}`}
+                          >
+                            {PRIORITIES.map((p) => (
+                              <option key={p} value={p}>{p}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
 
-                      <div className="task-card-footer">
-                        <div className="task-card-actions">
-                          <button onClick={() => openEditModal(task)} title="Edit task" className="icon-btn icon-btn-edit">
-                            <EditIcon />
-                          </button>
-                          <button onClick={() => handleDelete(task._id)} title="Delete task" className="icon-btn icon-btn-delete">
-                            <DeleteIcon />
-                          </button>
+                      {user?.role === 'admin' && (
+                        <div className="task-card-footer">
+                          <div className="task-card-actions">
+                            <button onClick={() => openEditModal(task)} title="Edit task" className="icon-btn icon-btn-edit">
+                              <EditIcon />
+                            </button>
+                            <button onClick={() => handleDelete(task._id)} title="Delete task" className="icon-btn icon-btn-delete">
+                              <DeleteIcon />
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
 
-                <button className="add-task-column-btn" onClick={() => openCreateModal(column)}>
-                  + Add task
-                </button>
+                               {user?.role === 'admin' && (
+                  <button className="add-task-column-btn" onClick={() => openCreateModal(column)}>
+                    + Add task
+                  </button>
+                )}
               </div>
             );
           })}

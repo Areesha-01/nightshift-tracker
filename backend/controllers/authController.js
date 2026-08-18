@@ -8,9 +8,8 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Register a new user
 exports.registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, adminCode } = req.body;
 
-  // Server-side validation — never trust the frontend alone
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'Name, email, and password are all required' });
   }
@@ -29,10 +28,19 @@ exports.registerUser = asyncHandler(async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  const newUser = new User({ name, email, password: hashedPassword });
+  // If a valid admin code is provided, the account is created as an
+  // already-verified admin. Otherwise it's a normal user pending approval.
+  const isAdmin = adminCode && adminCode === process.env.ADMIN_SECRET_CODE;
+
+  const newUser = new User({
+    name,
+    email,
+    password: hashedPassword,
+    role: isAdmin ? 'admin' : 'user',
+    isVerified: isAdmin,
+  });
   await newUser.save();
 
-  // Send welcome email (does not block registration if it fails)
   sendEmail(
     email,
     'Welcome to NightShift',
@@ -40,7 +48,9 @@ exports.registerUser = asyncHandler(async (req, res) => {
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 24px;">
         <h2 style="color: #0a0e1a;">Welcome to NightShift, ${name}! 🎉</h2>
         <p style="color: #333; font-size: 15px; line-height: 1.6;">
-          Your account has been created successfully. You can now log in and start managing your team's tasks and bugs.
+          ${isAdmin
+            ? 'Your admin account has been created successfully. You can now log in.'
+            : 'Your account has been created and is pending approval from an administrator. You will be able to access the dashboard once approved.'}
         </p>
         <p style="color: #888; font-size: 13px; margin-top: 32px;">
           If you did not create this account, please ignore this email.
@@ -49,7 +59,11 @@ exports.registerUser = asyncHandler(async (req, res) => {
     `
   );
 
-  res.status(201).json({ message: 'User registered successfully' });
+  res.status(201).json({
+    message: isAdmin
+      ? 'Admin account registered successfully'
+      : 'Registration successful. Your account is pending admin approval.',
+  });
 });
 
 // Login user
@@ -78,6 +92,8 @@ exports.loginUser = asyncHandler(async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      role: user.role,
+      isVerified: user.isVerified,
     },
   });
 });
