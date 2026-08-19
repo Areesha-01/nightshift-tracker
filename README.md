@@ -5,7 +5,7 @@ A lightweight task and bug tracker built for 2amTechSystems' development team, i
 ## Live Demo
 - **Frontend:** https://nightshift-tracker.vercel.app
 - **Backend API:** https://nightshift-api-ezqw.onrender.com/api
-
+- **GitHub Repository:** [github.com/Areesha-01/nightshift-tracker](https://github.com/Areesha-01/nightshift-tracker) (develop branch)
 ## Project Info
 - **Intern:** Areesha Chaudhry
 - **Role:** Software Developer Intern
@@ -27,6 +27,8 @@ A lightweight task and bug tracker built for 2amTechSystems' development team, i
 - Search and multi-criteria filtering
 - Comments on tasks
 - Responsive UI
+- Role-based access: Admin and Employee accounts
+- New employee accounts require admin approval before gaining login access
 
 ## Branching Strategy
 - `main` — production-ready, stable code only
@@ -66,6 +68,7 @@ Required environment variables:
 | `JWT_SECRET` | Secret key used to sign JWT tokens |
 | `EMAIL_USER` | Gmail address used to send welcome emails |
 | `EMAIL_PASS` | Gmail App Password (not your regular password) |
+| `ADMIN_SECRET_CODE` | Secret code required during registration to create an admin account (e.g. `nightshift_admin_2026`) |
 
 Run the backend server:
 ```bash
