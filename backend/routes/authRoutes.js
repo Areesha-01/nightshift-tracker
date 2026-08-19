@@ -9,6 +9,7 @@ const authLimiter = rateLimit({
   message: { message: 'Too many attempts. Please try again after 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test', // rate limiting doesn't apply during automated tests
 });
 
 router.post('/register', authLimiter, registerUser);
