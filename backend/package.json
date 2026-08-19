@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-   "test": "jest --coverage --runInBand"
+    "test": "jest --coverage --runInBand"
   },
   "jest": {
     "testEnvironment": "node",
@@ -20,6 +20,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-mongo-sanitize": "^2.2.0",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
     "nodemailer": "^9.0.3"
