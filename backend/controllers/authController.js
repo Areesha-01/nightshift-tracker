@@ -30,7 +30,7 @@ exports.registerUser = asyncHandler(async (req, res) => {
 
   // If a valid admin code is provided, the account is created as an
   // already-verified admin. Otherwise it's a normal user pending approval.
-  const isAdmin = adminCode && adminCode === process.env.ADMIN_SECRET_CODE;
+  const isAdmin = boolean(adminCode) && adminCode === process.env.ADMIN_SECRET_CODE;
 
   const newUser = new User({
     name,
