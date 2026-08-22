@@ -8,7 +8,7 @@ describe('Auth API', () => {
   test('POST /api/auth/register - creates a new user with valid data', async () => {
     const res = await request(app).post('/api/auth/register').send(validUser);
     expect(res.statusCode).toBe(201);
-    expect(res.body.message).toBe('User registered successfully');
+    expect(res.body.message).toBe('Registration successful. Your account is pending admin approval.');
   });
 
   test('POST /api/auth/register - rejects a weak password', async () => {

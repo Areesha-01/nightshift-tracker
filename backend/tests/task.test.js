@@ -3,7 +3,12 @@ const app = require('../app');
 require('./setup');
 
 async function registerAndLogin(email = 'taskuser@example.com') {
-  const user = { name: 'Task User', email, password: 'Test1234' };
+  const user = {
+    name: 'Task User',
+    email,
+    password: 'Test1234',
+    adminCode: process.env.ADMIN_SECRET_CODE,
+  };
   await request(app).post('/api/auth/register').send(user);
   const res = await request(app)
     .post('/api/auth/login')
